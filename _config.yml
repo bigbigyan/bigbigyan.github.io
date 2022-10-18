@@ -1,11 +1,11 @@
 # Setup
 title: YAN Blog
-description: Recode something
-url: https://vszhub.github.io
+description: This is a find day !
+url: https://Z123-Y456.github.io
 avatar: /image/avatar.jpeg
 paginate: 5
 permalink: pretty
-cover_image: image/bg.jpeg
+cover_image: /image/bg.jpeg
 
 # Gems
 plugins:
@@ -28,15 +28,14 @@ exclude:
   - not-pure-poole.gemspec
 
 # Optimize Jekyl SEO Tag
-twitter:
-  username: vszhub
-  card: summary
-logo: logo.png
+#twitter:
+  #username: yanzhou
+  #card: summary
+#logo: logo.png
 social:
-  name: Songzi Vong
+  name: Yan Zhou
   links:
-    - https://twitter.com/vszhub
-    - https://github.com/vszhub
+    - https://github.com/Z123-Y456
 google_site_verification: xxxxx
 lang: en
 
@@ -54,6 +53,6 @@ sass:
 
 # Specify the author for blog posts
 author:
-  name: Songzi Vong
-  url: https://github.com/vszhub/
-  email: vszhub@gmail.com
+  name: Yan Zhou
+  url: https://github.com/Z123-Y456/
+  email: 12132432@mail.sustech.mail.com
