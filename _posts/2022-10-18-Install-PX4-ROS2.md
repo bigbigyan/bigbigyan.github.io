@@ -3,7 +3,7 @@ layout: post
 title: Install PX4 ROS2
 author: Yan Zhou
 date: 2022-10-18 18:20 +0800
-last_modified_at: 2022-10-18 20:00:00 +0800
+last_modified_at: 2022-10-18 23:32:00 +0800
 tags: [PX4, ROS2]
 toc:  true
 ---
