@@ -3,12 +3,14 @@ layout: post
 title: PX4 ROS2 Connect
 author: Yan Zhou
 date: 2022-10-18 14:00 +0800
-last_modified_at: 2022-10-18 18:00:00 +0800
+last_modified_at: 2022-10-19 14:30:00 +0800
 tags: [PX4, ROS2, RTPS]
 toc:  true
 ---
 
 ## Create ROS2 work space
+
+> Beforce create ROS2 work space, you shoule sync the message between PX4 and ROS2.
 
 1. Create a workspace directory using:
 ```
@@ -56,14 +58,15 @@ Reference: <https://docs.px4.io/main/en/ros/ros2_comm.html>
 
 1. Modify the file `uorb_to_ros_msgs.py` belong to `PX4/PX4-Autopilot/msg/tools/`:
 ```
-input_dir = '/home/a/PX4/PX4-Autopilot/msg/' # the address of msg in PX4
-output_dir = '/home/a/PX4/px4_ros_com_ros2/src/px4_msgs/msg/' # the address od msg in ROS 2
+input_dir = '/home/zy/PX4/PX4-Autopilot/msg/' # the address of msg in PX4
+output_dir = '/home/zy/PX4/px4_ros_com_ros2/src/px4_msgs/msg/' # the address od msg in ROS 2
 ```
 from
 ```
 input_dir = sys.argv[1]
 output_dir = sys.argv[2]
 ```
+> Don't ignote the `/` behind the `msg/`.
 
 2. Run the file `uorb_to_ros_msgs.py` and the finish the sync of msg:
 ```
@@ -72,10 +75,10 @@ python3 uorb_to_ros_msgs.py
 
 3. Modify the file `uorb_to_ros_urtps_topic.py` belong to `PX4/PX4-Autopilot/msg/tools/`:
 ```
-in_file = path('/home/a/PX4/PX4-Autopilot/msg/tools/urtps_bridge_topics.yaml')
+in_file = Path('/home/zy/PX4/PX4-Autopilot/msg/tools/urtps_bridge_topics.yaml')
 # the address of urtps_bridge_topics.yaml in PX4
-out_file = Path('/home/a/PX4/px4_ros_com_ros2/src/px4_ros_com/templetes/urtps_bridge_topics.yaml') if (
-      Path('/home/a/PX4/px4_ros_com_ros2/src/px4_ros_com/templetes/urtps_bridge_topics.yaml') != in_file and Path('/home/a/PX4/px4_ros_com_ros2/src/px4_ros_com/templetes/urtps_bridge_topics.yaml') != "") else in_file
+out_file = Path('/home/zy/PX4/px4_ros_com_ros2/src/px4_ros_com/templates/urtps_bridge_topics.yaml') if (
+      Path('/home/zy/PX4/px4_ros_com_ros2/src/px4_ros_com/templates/urtps_bridge_topics.yaml') != in_file and Path('/home/zy/PX4/px4_ros_com_ros2/src/px4_ros_com/templates/urtps_bridge_topics.yaml') != "") else in_file
 # the address of urtps_bridge_topics.yaml in ROS 2 workspace
 ```
 from
