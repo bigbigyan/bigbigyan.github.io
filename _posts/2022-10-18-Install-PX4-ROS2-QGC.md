@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Install PX4 ROS2
+title: Install PX4 ROS2 QGC
 author: Yan Zhou
 date: 2022-10-18 18:20 +0800
 last_modified_at: 2022-10-19 12:26:00 +0800
@@ -133,33 +133,27 @@ sudo cmake --build . --target install
 Reference: <https://docs.px4.io/main/en/dev_setup/fast-dds-installation.html>
 
 ### Install ROS2
-
 1. Download tha key
 	```
 	sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
 	```
-
 2. Export to system
 	```
 	echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 	```
-
 3. Install ROS2
 	```
 	sudo apt update
 	sudo apt install ros-foxy-desktop
 	```
-
 4. The install process should also install the `colcon` build tools, but in case that doesn't happen, you can install the tools manually:
 	```
 	sudo apt install python3-colcon-common-extensions
 	```
-
 5. `eigen3_cmake_module` is also required, since Eigen3 is used on the transforms library:
 	```
 	sudo apt install ros-foxy-eigen3-cmake-module
 	```
-
 6. Some Python dependencies must also be installed (using `pip` or `apt`):
 	```
 	sudo pip3 install -U empy pyros-genmsg setuptools
@@ -176,3 +170,30 @@ Reference: <https://docs.px4.io/main/en/dev_setup/fast-dds-installation.html>
 Reference: <https://zhuanlan.zhihu.com/p/430670234>  
 Reference: <https://docs.px4.io/main/en/ros/ros2_comm.html>
 
+## Install 	QGC
+
+1. On the command prompt enter:
+	```
+	sudo usermod -a -G dialout $USER  #sudo usermod -a -G dialout zy
+	sudo apt-get remove modemmanager -y
+	sudo apt install gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl -y
+	sudo apt install libqt5gui5 -y
+	sudo apt install libfuse2 -y
+	```
+	Reference: <https://blog.csdn.net/qq_40342287/article/details/105939584>
+2. Check out the user if changed:
+	```
+	grep 'dialout' /etc/group
+	dialout:x:20:zy
+	```
+3. Download [QGroundControl.AppImage](https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl.AppImage).
+4. Install QGC using the terminal commands:
+	```
+	chmod +x ./QGroundControl.AppImage
+	```
+5. Run QGC:
+	```
+	./QGroundControl.AppImage  (or double click)
+	```
+
+Reference: <https://docs.qgroundcontrol.com/master/en/getting_started/download_and_install.html>
