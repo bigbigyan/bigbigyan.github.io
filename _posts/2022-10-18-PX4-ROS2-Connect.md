@@ -43,7 +43,7 @@ Reference: <https://docs.px4.io/main/en/ros/ros2_comm.html>
 3. On a new terminal, `source` the ROS 2 workspace and the run the scribe:
       ```
       source ~/px4_ros_com_ros2/install/setup.bash
-      ros2 run px4_ros_com offbpard_control
+      ros2 run px4_ros_com offboard_control
       ```
 
 Reference: <https://docs.px4.io/main/en/ros/ros2_comm.html>
