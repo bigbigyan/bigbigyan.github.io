@@ -44,6 +44,7 @@ cp -f $CWD/src/lidar_to_mmwave.cpp $PX4ROSDIR/src/px4_ros_com/src/examples/offbo
 cd $PX4ROSDIR/src/px4_ros_com/scripts/
 ./build_ros2_workspace.bash
 ```
+> `$PWD` is the current directory 
 
 ## CMakeLists.txt
 
@@ -113,11 +114,20 @@ I have no idears of the usefulness of packages, targets, and sources in ROS2.
 
 ## sitl_target.cmake
 
+> This file is in `PX4-Autopilot/platforms/posix/cmake/`. (old version V1.13.1)  
 
+The same as the `sitl_targets_gazeb0.cmake`, the purpose is add models and worlds.
+```cmake
+set(models
+	......
+	)
+set(worlds
+	......
+	)
 
 ## sitl_targets_gazebo.cmake
 
-> This file is in `PX4-Autopilot/src/modules/simulation/simulator_mavlink/`
+> This file is in `PX4-Autopilot/src/modules/simulation/simulator_mavlink/`. (new version)
 
 Here are some modified comparisons with the original file:
 + add models of `	grass_plane` `hca_plane` `Powerline_tempsetup` `powerpylons` `hca_temp_powerline` `hcaa_pylon_setup`

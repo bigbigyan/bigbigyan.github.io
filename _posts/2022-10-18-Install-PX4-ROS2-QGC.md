@@ -83,8 +83,8 @@ toc:  true
 	if you want to select another version
 	```
 	git checkout v1.13.0
-	git submodule sync --rescursive
-	git submodule update --init --rescursive  #update the submodule under the corresponding version
+	git submodule sync --recursive
+	git submodule update --init --recursive  #update the submodule under the corresponding version
 	make px4_sitl_rtps gazebo  #compile the code 
 	```
 
@@ -202,6 +202,10 @@ Reference: <https://docs.px4.io/main/en/dev_setup/fast-dds-installation.html>
 	> sudo apt install python3-testresources
 	> ```
 	> Reference: <https://gist.github.com/y56/0540d22a1db40dacc7fbbb93c866821e>
+7. Configure environment variables.
+	```sh
+	echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
+	```
 
 Reference: <https://zhuanlan.zhihu.com/p/430670234>  
 Reference: <https://docs.px4.io/main/en/ros/ros2_comm.html>
