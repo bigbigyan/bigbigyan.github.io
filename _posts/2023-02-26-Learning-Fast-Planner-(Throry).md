@@ -3,7 +3,7 @@ layout: post
 title: Learning Fast Planner (Theory)
 author: Yan Zhou
 date: 2023-02-26 09:30 +0800
-last_modified_at: 2022-02-26 12:30:00 +0800
+last_modified_at: 2022-03-02 18:30:00 +0800
 tags: [Trajectory,Fast-planner,theory]
 toc:  true
 math: true
