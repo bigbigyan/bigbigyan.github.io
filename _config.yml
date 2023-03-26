@@ -1,7 +1,7 @@
 # Setup
 title: YAN Blog
 description: This is a find day !
-url: https://Z123-Y456.github.io
+url: https://bigbigyan.github.io
 avatar: /image/avatar.jpeg
 paginate: 5
 permalink: pretty
@@ -35,7 +35,7 @@ exclude:
 social:
   name: Yan Zhou
   links:
-    - https://github.com/Z123-Y456
+    - https://github.com/bigbigyan/
 google_site_verification: xxxxx
 lang: en
 
@@ -54,5 +54,5 @@ sass:
 # Specify the author for blog posts
 author:
   name: Yan Zhou
-  url: https://github.com/Z123-Y456/
+  url: https://github.com/bigbigyan/
   email: 12132432@mail.sustech.mail.com

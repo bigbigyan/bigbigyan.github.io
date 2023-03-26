@@ -9,7 +9,8 @@ toc:  true
 math: true
 ---
 
-# Kinodynamic Path Searching
+## Kinodynamic Path Searching
+
 This kinodynamic path searching module is originated from the hybrid-state A*[^1]  
 
 > **Algorithm : Kinodynamic Path Searching**  
@@ -32,7 +33,7 @@ This kinodynamic path searching module is originated from the hybrid-state A*[^1
 >        
 > \\\(\mathcal{P}\\\) is the open set, and \\\(\mathcal{C}\\\) is the close set.  
 
-## Primitive Generation
+### Primitive Generation
 trajectory polynominal functions
 :     
 
@@ -112,7 +113,7 @@ $$
       \right.
 $$
 
-## Actual Cost and Heuristic Cost
+### Actual Cost and Heuristic Cost
 
 Aim
 :     minimise the time and control cost  
@@ -124,7 +125,7 @@ $$
       \mathcal{J}(T) = \int_0^T{||\mathbf{u}(t)||^2}{\rm d}t + \rho T
 $$
 
-### actual cost
+#### actual cost
 
 actual cost $$ g_c $$
 :     the actual cost of an optimal path from the star state $$ \mathbf{x}_s $$ to the current state $$ \mathbf{x}_c $$  
@@ -135,7 +136,7 @@ $$
 
 > discretized input $$ \mathbf{u}(t) = \mathbf{u}_d $$ and duration $$ \tau $$. $$ \quad J $$ primitives consist the optimal path  
 
-### heuristic cost
+#### heuristic cost
 
 minisize $$ \mathcal{J}(T) $$ from $$ \mathbf{x}_c $$ to the goal state $$ \mathbf{x}_g $$ by applying the Pontryagins minimum principle[^2]:  
 
@@ -303,9 +304,9 @@ the cost function:
 
 *****
 
-# B-Spline trajectory optimization
+## B-Spline trajectory optimization
 
-## Uniform B-splines
+### Uniform B-splines
 
 A B-spline is determined by:
 :     degree $$ p_b $$  
@@ -327,7 +328,7 @@ The position can be evaluated using the matrix representation[^3]:
       > $$ M_{p_b + 1} $$ is a constant matrix determined by $$ p_b $$  
       > $$ p_b $$ is set as 3  
 
-## Convex Hull Property
+### Convex Hull Property
 
 velocity:
 :     control points $$ \{ V_0,V_1,\cdots,V_{N-1} \} \quad V_i \in [-v_{max},v_{max}]$$  
@@ -349,7 +350,7 @@ collision-free:
       > $$ d_c $$ is the distance between the voxel and any one control point  
       > The illustration of picture is more clearly. In the paper Fig. 4  
 
-## Problem Formulation
+### Problem Formulation
 
 For B-spline trajectory with $$ p_b $$ degree defined by $$ \{Q_0,Q_1,\cdots,Q_N \} $$, we optimize the subset $$ \{Q_{p_b},Q_{p_b + 1},\cdots,Q_{N - p_b} \} $$.
 
@@ -391,7 +392,7 @@ velocity and acceleration penalty:
       \end{cases}
       $$  
 
-## Time adjustment
+### Time adjustment
 
 The control points of a non-uniform B-spline's first and second order derivatives $$ \rm{V}'_i $$ and $$ \rm{A}'_i $$ can be computed by:  
 
