@@ -3,7 +3,7 @@ layout: post
 title: Install PX4 ROS2 QGC
 author: Yan Zhou
 date: 2022-10-18 18:20 +0800
-last_modified_at: 2022-11-2 12:00:00 +0800
+last_modified_at: 2023-06-25 12:00:00 +0800
 tags: [PX4, ROS2]
 toc:  true
 ---
@@ -59,9 +59,16 @@ toc:  true
 
 5. When the script `ubuntu.sh` gets stuck, you can quit by `ctrl + c`, and then continue `bash ubuntu.sh`
 
-6. Reboot the computer
+6. Some dependencies `The following packages have unmet dependencies!`  
+	Can install by aptitude and select the second consequent.
+	```
+	sudo apt-get install aptitude
+	sudo aptitude install <package-name>
+	```
 
-7. PX4 version management
+7. Reboot the computer
+
+8. PX4 version management
 	- check current version
 	```
 	cd PX4/PX4-Autopilot/
@@ -99,7 +106,7 @@ toc:  true
 
 ## Install ROS2
 
-### Install Fast DDS
+### Install Fast DDS -- no longer used in 1.14
 
 1. Check the version of java JDK 11:
 	```
@@ -168,6 +175,23 @@ toc:  true
 
 Reference: <https://docs.px4.io/main/en/dev_setup/fast-dds-installation.html>
 
+### Install Micro XRCE-DDS Agent & Client
+1. Enter the following commands to fetch and build the agent from source:
+	```
+	git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+	cd Micro-XRCE-DDS-Agent
+	mkdir build
+	cd build
+	cmake ..
+	make
+	sudo make install
+	sudo ldconfig /usr/local/lib/
+	```
+2. Start the agent with settings for connecting to the uXRCE-DDS client running on the simulator:
+	```
+	MicroXRCEAgent udp4 -p 8888
+	```
+
 ### Install ROS2
 1. Download tha key
 	```
@@ -206,6 +230,30 @@ Reference: <https://docs.px4.io/main/en/dev_setup/fast-dds-installation.html>
 	```sh
 	echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
 	```
+8. Some errors
+	```
+	sudo: curl: command not found
+	```
+	Install the curl `sudo apt install curl`  
+	
+	```
+	The following signatures couldn't be verified because the public key is not available: NO_PUBKEY F42ED6FBAB17C654
+	Reading package lists... Done
+	W: GPG error: https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu focal InRelease: The following signatures couldn't be verified because the public key is not available: NO_PUBKEY F42ED6FBAB17C654
+	E: The repository 'https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu focal InRelease' is not signed.
+	N: Updating from such a repository can't be done securely, and is therefore disabled by default.
+	N: See apt-secure(8) manpage for repository creation and user configuration details.
+	```
+	This is meaning the key of the ros2 is wrong. Changing it by <https://mirror.tuna.tsinghua.edu.cn/help/ros2/>  
+
+	When you run `ROS2` and the output include: 
+	```
+	/opt/ros/foxy/bin/ros2:6: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+  	from pkg_resources import load_entry_point
+	```
+	Solving it by `pip install setuptools==58.2.0`
+	Reference:<https://stackoverflow.com/questions/73257839/>
+
 
 Reference: <https://zhuanlan.zhihu.com/p/430670234>  
 Reference: <https://docs.px4.io/main/en/ros/ros2_comm.html>
