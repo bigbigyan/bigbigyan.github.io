@@ -10,31 +10,31 @@ toc:  true
 
 ## Install asv_wave_sim, ardupilot, ardupilot_gazebo, ardupilot_SITL
 
-1. install gazebo garden
-	<https://gazebosim.org/docs/garden/install/>
-	如果图标打开是黑色的：
+1. install gazebo garden  
+	<https://gazebosim.org/docs/garden/install/>  
+	如果图标打开是黑色的：  
 	<https://blog.csdn.net/raw_inputhello/article/details/132302448>
 
-2. install and config asv_wave_sim
-	use ubuntu 2204 and gazebo garden
-	<https://github.com/srmainwaring/asv_wave_sim>
-	issue:
-	<https://github.com/srmainwaring/asv_wave_sim/issues/179>
+2. install and config asv_wave_sim   
+	use ubuntu 2204 and gazebo garden  
+	<https://github.com/srmainwaring/asv_wave_sim>  
+	issue:  
+	<https://github.com/srmainwaring/asv_wave_sim/issues/179>  
 
-3. install ardupilot
-	<https://ardupilot.org/dev/docs/where-to-get-the-code.html>
-	<https://ardupilot.org/dev/docs/building-setup-linux.html>
-	build SITL:
+3. install ardupilot  
+	<https://ardupilot.org/dev/docs/where-to-get-the-code.html>  
+	<https://ardupilot.org/dev/docs/building-setup-linux.html>  
+	build SITL:  
 	```
 		./waf configure --board sitl
 		./waf copter
 	```
 
-4. install ardupilot_gazebo
-	<https://ardupilot.org/dev/docs/sitl-with-gazebo.html>
+4. install ardupilot_gazebo  
+	<https://ardupilot.org/dev/docs/sitl-with-gazebo.html>  
 
-5. install ardupilot_SITL (just download this file is ok)
-	<https://github.com/ArduPilot/SITL_Models/blob/master/Gazebo/docs/BlueBoat.md>
+5. install ardupilot_SITL (just download this file is ok)  
+	<https://github.com/ArduPilot/SITL_Models/blob/master/Gazebo/docs/BlueBoat.md>  
 
 ## add path
 	see in ```/home/zy/program/asv_wave_sim/src/setup.bash```
@@ -44,6 +44,7 @@ toc:  true
 	# add ardupilot
 	export GZ_SIM_SYSTEM_PLUGIN_PATH=$HOME/program/ardupilot/ardupilot/gz_ws/src/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH
 	export GZ_SIM_RESOURCE_PATH=$HOME/program/ardupilot/ardupilot/gz_ws/src/ardupilot_gazebo/models:$HOME/program/ardupilot/ardupilot/gz_ws/src/ardupilot_gazebo/worlds:$GZ_SIM_RESOURCE_PATH
+	#add blueboat path (if i copy this on the asv_wave file, this path maybe no need to add)
 	export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:\
 	$HOME/program/ardupilot/ardupilot/SITL_Models/Gazebo/models:\
 	$HOME/program/ardupilot/ardupilot/SITL_Models/Gazebo/worlds
@@ -110,3 +111,17 @@ toc:  true
 	查看GPS数据
 	gz topic -e -t /world/waves/model/blueboat/link/gps_link/sensor/gps_sensor/navsat
 ```
+## some else
+
+1. the thrust of the throttle : ((PWM - 1000)/1000 - 0.5)*70    (-35N ~ 35N)
+
+2. the weigh of the ship : 30 kg
+
+3. the heigh and during of the sim wave and the wind：  
+	1: 0m,      1.2253s  
+	2: 0.023m,  1.31s  
+	3: 0.07m,	1.7728s  
+	4: 0.1499m, 1.95303s
+	5: 0.3449m, 2.41178s  
+	6: 0.6988m, 2.39784s
+	  
