@@ -36,6 +36,7 @@ let storageSnapshot = null, persistedDocument = clone(EMPTY);
 let currentId = new URLSearchParams(location.search).get('note');
 let pendingSave = false, conflictRemote = null, toastTimer;
 let disposeToc = () => {};
+const expandedCategories = new Set();
 let channel;
 try { channel = new BroadcastChannel(STORAGE); } catch { /* Cross-tab notices are optional. */ }
 
@@ -270,7 +271,12 @@ function tree(query = '') {
   const host = $('#tree'); host.replaceChildren();
   if (!results.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = '没有找到相关笔记'; host.append(p); }
   for (const [name, notes] of groups) {
-    const details = document.createElement('details'); details.open = true;
+    const details = document.createElement('details');
+    details.open = Boolean(query.trim()) || expandedCategories.has(name);
+    details.addEventListener('toggle', () => {
+      if (query.trim() || !details.isConnected) return;
+      if (details.open) expandedCategories.add(name); else expandedCategories.delete(name);
+    });
     const summary = document.createElement('summary'); summary.innerHTML = `${icon('folder')}<span></span><span class="count"></span>`;
     summary.querySelector('span').textContent = name; summary.querySelector('.count').textContent = notes.length; details.append(summary);
     let lastCategory = null;
