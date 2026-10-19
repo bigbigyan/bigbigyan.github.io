@@ -7,6 +7,8 @@ const REPO = 'bigbigyan/bigbigyan.github.io';
 const BRANCH = 'master';
 const FILE = 'notes/notebook.json';
 const STORAGE = `yan-notebook:v1:${REPO}:${BRANCH}`;
+const FONT_STORAGE = `${STORAGE}:font-size`;
+const DEFAULT_FONT_SIZE = 16;
 const CATALOG_VERSION = '2026-10-19-original-notes';
 const $ = selector => document.querySelector(selector);
 const clone = value => structuredClone(value);
@@ -36,6 +38,23 @@ let pendingSave = false, conflictRemote = null, toastTimer;
 let disposeToc = () => {};
 let channel;
 try { channel = new BroadcastChannel(STORAGE); } catch { /* Cross-tab notices are optional. */ }
+
+function readFontSize() {
+  try { const value = Number(localStorage.getItem(FONT_STORAGE)); return Number.isInteger(value) && value >= 12 && value <= 24 ? value : DEFAULT_FONT_SIZE; }
+  catch { return DEFAULT_FONT_SIZE; }
+}
+function applyFontSize(value, save = false) {
+  const size = Math.max(12, Math.min(24, Math.round(Number(value) || DEFAULT_FONT_SIZE)));
+  document.documentElement.style.setProperty('--note-font-size', `${size}px`);
+  if ($('#font-size-range')) {
+    $('#font-size-range').value = size;
+    $('#font-size-value').value = `${size} px`;
+    $('#font-smaller').disabled = size === 12;
+    $('#font-larger').disabled = size === 24;
+  }
+  if (save) { try { localStorage.setItem(FONT_STORAGE, String(size)); } catch { toast('字号已调整，但当前浏览器无法记住此设置。'); } }
+}
+function fontButton() { return '<button class="text-button font-button" data-action="font-size" aria-haspopup="dialog"><span aria-hidden="true">Aa</span>字号</button>'; }
 
 function readerURL(id = currentId) { const url = new URL(ROOT); if (id) url.searchParams.set('note', id); return url.href; }
 function editorURL(id = currentId) { const url = new URL('edit/', ROOT); if (id) url.searchParams.set('note', id); return url.href; }
@@ -167,6 +186,14 @@ function renderBody(element, markdown) {
 }
 function dialogs() {
   return `<div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="font-dialog" aria-labelledby="font-title">
+    <button class="close-dialog" data-close="font-dialog" aria-label="关闭字号设置">×</button>
+    <h2 id="font-title">调整字号</h2><p>阅读和编辑时使用同一字号，当前浏览器会记住你的选择。</p>
+    <label for="font-size-range">正文字号 <output id="font-size-value" for="font-size-range" aria-live="polite">16 px</output></label>
+    <div class="font-controls"><button class="secondary" id="font-smaller" aria-label="缩小字号">A−</button><input type="range" id="font-size-range" min="12" max="24" step="1" value="16"><button class="secondary" id="font-larger" aria-label="放大字号">A+</button></div>
+    <div class="font-preview">记录、理解，再连接。<br>Write a little, learn a little.</div>
+    <div class="dialog-actions"><button class="secondary" id="font-reset">恢复默认</button><button class="primary" data-close="font-dialog">完成</button></div>
+  </dialog>
   <dialog id="connection-dialog" aria-labelledby="connection-title">
     <button class="close-dialog" data-close="connection-dialog" aria-label="关闭">×</button>
     <h2 id="connection-title">连接你的 GitHub</h2>
@@ -174,7 +201,8 @@ function dialogs() {
     <div class="repo-label">${REPO}<br>分支：${BRANCH} · ${FILE}</div>
     <label for="github-token">Fine-grained access token</label>
     <input id="github-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
-    <p>选择此仓库，并授予 <strong>Contents: Read and write</strong>。令牌仅用于本页会话，刷新页面后需重新输入；不会保存到草稿或仓库。</p>
+    <p>选择此仓库，在 <strong>Add permissions</strong> 中添加 <strong>Contents</strong>，将 Access 设为 <strong>Read and write</strong>。新增、修改和删除笔记均使用此权限，无需另加删除权限。</p>
+    <p>令牌仅用于本页会话，刷新页面后需重新输入；不会保存到草稿或仓库。</p>
     <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer" class="text-button">前往 GitHub 创建令牌 ↗</a>
     <p id="connection-error" class="dialog-error" role="alert"></p>
     <div class="dialog-actions"><button class="secondary" id="disconnect">断开连接</button><button class="primary" id="connect">验证并连接</button></div>
@@ -201,6 +229,13 @@ function dialogs() {
 }
 function sharedEvents() {
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => document.getElementById(b.dataset.close).close());
+  applyFontSize(readFontSize());
+  document.querySelectorAll('[data-action=font-size]').forEach(b => b.onclick = () => { $('#font-dialog').showModal(); $('#font-size-range').focus(); });
+  $('#font-size-range').oninput = event => applyFontSize(event.target.value, true);
+  $('#font-smaller').onclick = () => applyFontSize(Number($('#font-size-range').value) - 1, true);
+  $('#font-larger').onclick = () => applyFontSize(Number($('#font-size-range').value) + 1, true);
+  $('#font-reset').onclick = () => applyFontSize(DEFAULT_FONT_SIZE, true);
+  window.addEventListener('storage', event => { if (event.key === FONT_STORAGE || event.key === null) applyFontSize(readFontSize()); });
   $('#connect').onclick = connect;
   $('#disconnect').onclick = () => { token = ''; $('#github-token').value = ''; updateConnection(); $('#connection-dialog').close(); toast('已断开 GitHub，草稿仍保存在此浏览器。'); };
   $('#new-form').onsubmit = event => {
@@ -268,7 +303,7 @@ function renderReader() {
     <div class="top-actions"><span class="status" role="status"></span><button class="text-button" data-action="connect" title="连接 GitHub">${icon('github')}<span class="connection-label">连接 GitHub</span></button><button class="primary" data-action="save" hidden>${icon('cloud')}保存到 GitHub</button><a class="secondary" id="edit-link">${icon('edit')}编辑笔记</a></div></header>
     <div id="storage-alert" class="storage-alert" role="alert" hidden>浏览器未能保存草稿，请立即导出备份，避免关闭页面后丢失。</div>
     <div class="reading-layout"><article class="page"><div class="eyebrow" id="eyebrow"></div><h1 class="title" id="note-title"></h1><div class="meta"><span class="tag" id="note-tag"></span><span id="note-date"></span><span id="reading-time"></span></div>
-    <div class="read-hint">${icon('edit')}这里是阅读模式 · 点击正文空白处，或右上角按钮进入编辑页</div>
+    <div class="read-hint">${icon('edit')}<span>这里是阅读模式 · 点击正文空白处，或右上角按钮进入编辑页</span>${fontButton()}</div>
     <details class="article-toc" id="article-toc" hidden></details><div class="prose" id="note-body"></div><footer class="page-footer"><span>${icon('leaf')}让知识慢慢生长</span><div class="note-footer-actions"><button class="text-button" data-action="export">${icon('download')}导出 Markdown</button><button class="text-button danger-text" data-action="delete">${icon('trash')}删除笔记</button></div></footer></article></div></main>${dialogs()}`;
   sharedEvents(); $('#new-note').onclick = openNew; $('#import').onclick = () => $('#import-file').click(); $('#backup').onclick = backup; $('#refresh').onclick = () => pullCloud(); $('#trash').onclick = openTrash;
   $('#search').oninput = event => tree(event.target.value);
@@ -341,7 +376,7 @@ function renderEditor() {
     <div class="editor-actions"><span class="status" role="status"></span><button class="text-button danger-text" data-action="delete">${icon('trash')}删除笔记</button><button class="text-button" data-action="export">${icon('download')}导出 .md</button><button class="text-button" data-action="connect">${icon('github')}<span class="connection-label">连接 GitHub</span></button><button class="primary" data-action="save">${icon('cloud')}保存到 GitHub</button></div></header>
     <div id="storage-alert" class="storage-alert" role="alert" hidden>草稿未能写入浏览器，请先导出备份。</div>
     <main class="editor-shell"><div class="editor-heading"><label class="visually-hidden" for="edit-category">课程 / 分类</label><input id="edit-category" class="editor-category" maxlength="160" placeholder="课程 / 分类"><label class="visually-hidden" for="edit-title">笔记标题</label><input id="edit-title" class="editor-title" maxlength="160" placeholder="未命名笔记"></div>
-    <div class="editor-tabs"><div class="tab-list" role="tablist" aria-label="编辑模式"><button class="tab" role="tab" data-mode="rich" aria-selected="true">可视编辑</button><button class="tab" role="tab" data-mode="source" aria-selected="false">Markdown + 预览</button></div><span class="editor-help">输入 / 插入内容，选中文字设置格式</span></div>
+    <div class="editor-tabs"><div class="tab-list" role="tablist" aria-label="编辑模式"><button class="tab" role="tab" data-mode="rich" aria-selected="true">可视编辑</button><button class="tab" role="tab" data-mode="source" aria-selected="false">Markdown + 预览</button></div><div class="editor-display"><span class="editor-help">输入 / 插入内容，选中文字设置格式</span>${fontButton()}</div></div>
     <div class="editor-content"><div id="rich-editor"></div><div id="source-wrap" class="source-wrap" hidden><textarea id="source" aria-label="Markdown 源码" spellcheck="false"></textarea><div id="source-preview" class="prose source-preview" aria-label="实时预览"></div></div></div>
     <footer class="editor-bottom"><span>草稿自动保存于此浏览器</span><span id="editor-count"></span></footer></main>${dialogs()}`;
   sharedEvents(); $('#back-link').href = readerURL();
@@ -465,4 +500,5 @@ async function boot() {
   else persist();
   if (migrationMessage) toast(migrationMessage);
 }
+applyFontSize(readFontSize());
 boot().catch(e => { console.error(e); $('#app').textContent = '页面未能打开。请刷新，或检查本地文件是否完整。'; });
