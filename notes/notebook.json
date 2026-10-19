@@ -2,13 +2,6 @@
   "version": 1,
   "notes": [
     {
-      "id": "6c48a661-2975-44f9-a2e7-3cb23d8eda63",
-      "title": "test",
-      "category": "Test",
-      "body": " # 测试 \n",
-      "updatedAt": "2026-10-19T06:49:21.381Z"
-    },
-    {
       "id": "px4-ros2-install",
       "title": "Install PX4 ROS2 QGC",
       "category": "机器人与仿真 / PX4 与 ROS2",
