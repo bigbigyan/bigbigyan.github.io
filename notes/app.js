@@ -1,5 +1,6 @@
 import { EMPTY, validateDocument, sameDocument, mergeDocuments, toBase64, fromBase64, searchNotes } from './core.mjs';
 import { setupTableOfContents } from './toc.mjs';
+import { setupSidebarTools } from './sidebar-tools.mjs';
 
 const ROOT = new URL(`${document.body.dataset.root}/`, location.href);
 const EDIT = document.body.dataset.mode === 'edit';
@@ -36,6 +37,7 @@ let storageSnapshot = null, persistedDocument = clone(EMPTY);
 let currentId = new URLSearchParams(location.search).get('note');
 let pendingSave = false, conflictRemote = null, toastTimer;
 let disposeToc = () => {};
+let sidebarTools;
 const expandedCategories = new Set();
 let channel;
 try { channel = new BroadcastChannel(STORAGE); } catch { /* Cross-tab notices are optional. */ }
@@ -260,7 +262,7 @@ function sharedEvents() {
   $('#confirm-delete').onclick = deleteNote;
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); saveCloud(); }
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && $('#search')) { event.preventDefault(); $('.sidebar').classList.add('open'); $('#search').focus(); }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && $('#search')) { event.preventDefault(); $('.sidebar').classList.add('open'); sidebarTools.openSearch(); }
     if (event.key === 'Escape') $('.sidebar')?.classList.remove('open');
   });
   channel?.addEventListener('message', () => { toast('另一个页面更新了笔记。请先导出本页草稿，再刷新查看，避免覆盖。'); setStatus('其他页面已有更新', true); document.querySelectorAll('[data-action=save]').forEach(b => b.disabled = true); });
@@ -301,19 +303,28 @@ function openNew() {
 function renderReader() {
   $('#app').innerHTML = `<aside class="sidebar" aria-label="笔记目录">
     <button class="close-mobile" aria-label="关闭目录">×</button><a class="brand" href="${ROOT.href}"><span class="brand-mark">Y</span><div><span class="brand-name">我的学习笔记</span><small>A LITTLE, EVERY DAY</small></div></a>
-    <label class="search-box">${icon('search')}<input id="search" type="search" aria-label="搜索全部笔记" placeholder="搜索笔记…"><kbd>⌘ K</kbd></label>
-    <button class="new-note" id="new-note">${icon('plus')}新建笔记</button>
+    <div class="sidebar-disclosure sidebar-compose" id="sidebar-compose">
+      <button class="sidebar-tool-toggle" id="compose-toggle" aria-expanded="false" aria-controls="compose-panel" title="鼠标移入或点击展开搜索与新建">${icon('search')}<span>搜索 / 新建</span><small id="search-active" hidden>筛选中</small><span class="tool-chevron" aria-hidden="true">⌄</span></button>
+      <div class="sidebar-popover" id="compose-panel" hidden>
+        <label class="search-box">${icon('search')}<input id="search" type="search" aria-label="搜索全部笔记" placeholder="搜索笔记…"><kbd>Ctrl K</kbd></label>
+        <button class="new-note" id="new-note">${icon('plus')}新建笔记</button>
+      </div>
+    </div>
     <div class="library-heading"><span>我的知识库</span><span id="note-count"></span></div><nav class="tree" id="tree" aria-label="课程分类"></nav>
-    <div class="sidebar-bottom"><button id="import">${icon('download')}导入 Markdown / 备份</button><button id="backup">${icon('book')}导出全部笔记</button><button id="trash">${icon('trash')}回收站</button><button id="refresh">${icon('refresh')}拉取 GitHub 更新</button><p>记录、理解，再连接。<br>Yan's personal learning space</p></div>
+    <div class="sidebar-bottom sidebar-disclosure" id="sidebar-utilities">
+      <button class="sidebar-tool-toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-panel" title="鼠标移入或点击展开笔记工具">${icon('menu')}<span>笔记工具</span><span class="tool-chevron" aria-hidden="true">⌃</span></button>
+      <div class="sidebar-popover" id="tools-panel" hidden><button id="import">${icon('download')}导入 Markdown / 备份</button><button id="backup">${icon('book')}导出全部笔记</button><button id="trash">${icon('trash')}回收站</button><button id="refresh">${icon('refresh')}拉取 GitHub 更新</button><p>记录、理解，再连接。<br>Yan's personal learning space</p></div>
+    </div>
   </aside><main class="workspace"><header class="topbar"><button class="mobile-menu" aria-label="打开笔记目录">${icon('menu')}</button><div class="breadcrumb" id="breadcrumb"></div>
     <div class="top-actions"><span class="status" role="status"></span><button class="text-button" data-action="connect" title="连接 GitHub">${icon('github')}<span class="connection-label">连接 GitHub</span></button><button class="primary" data-action="save" hidden>${icon('cloud')}保存到 GitHub</button><a class="secondary" id="edit-link">${icon('edit')}编辑笔记</a></div></header>
     <div id="storage-alert" class="storage-alert" role="alert" hidden>浏览器未能保存草稿，请立即导出备份，避免关闭页面后丢失。</div>
     <div class="reading-layout"><article class="page"><div class="eyebrow" id="eyebrow"></div><h1 class="title" id="note-title"></h1><div class="meta"><span class="tag" id="note-tag"></span><span id="note-date"></span><span id="reading-time"></span></div>
     <div class="read-hint">${icon('edit')}<span>这里是阅读模式 · 点击正文空白处，或右上角按钮进入编辑页</span>${fontButton()}</div>
     <details class="article-toc" id="article-toc" hidden></details><div class="prose" id="note-body"></div><footer class="page-footer"><span>${icon('leaf')}让知识慢慢生长</span><div class="note-footer-actions"><button class="text-button" data-action="export">${icon('download')}导出 Markdown</button><button class="text-button danger-text" data-action="delete">${icon('trash')}删除笔记</button></div></footer></article></div></main>${dialogs()}`;
+  sidebarTools = setupSidebarTools($('.sidebar'));
   sharedEvents(); $('#new-note').onclick = openNew; $('#import').onclick = () => $('#import-file').click(); $('#backup').onclick = backup; $('#refresh').onclick = () => pullCloud(); $('#trash').onclick = openTrash;
-  $('#search').oninput = event => tree(event.target.value);
-  $('.mobile-menu').onclick = () => $('.sidebar').classList.toggle('open'); $('.close-mobile').onclick = () => $('.sidebar').classList.remove('open');
+  $('#search').oninput = event => { tree(event.target.value); $('#search-active').hidden = !event.target.value.trim(); };
+  $('.mobile-menu').onclick = () => $('.sidebar').classList.toggle('open'); $('.close-mobile').onclick = () => { $('.sidebar').classList.remove('open'); sidebarTools.closeAll(); };
   $('#note-body').onclick = event => {
     if (window.getSelection()?.toString() || event.target.closest('a, button, input, code, pre, img, .katex, table')) return;
     if (event.target === $('#note-body')) location.href = editorURL();
