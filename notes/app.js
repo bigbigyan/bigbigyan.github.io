@@ -1,6 +1,7 @@
 import { EMPTY, validateDocument, sameDocument, mergeDocuments, toBase64, fromBase64, searchNotes } from './core.mjs';
 import { setupTableOfContents } from './toc.mjs';
 import { setupSidebarTools } from './sidebar-tools.mjs';
+import { directoryParts, directoryKey, listDirectories, inDirectory, moveNote, renameDirectory } from './directories.mjs';
 
 const ROOT = new URL(`${document.body.dataset.root}/`, location.href);
 const EDIT = document.body.dataset.mode === 'edit';
@@ -216,6 +217,22 @@ function dialogs() {
     <label for="new-category">课程 / 分类</label><input id="new-category" maxlength="160" required list="categories" value="数学 / 微积分"><datalist id="categories"></datalist>
     <div class="dialog-actions"><button type="button" class="secondary" data-close="new-dialog">取消</button><button type="submit" class="primary">创建并开始写作</button></div></form>
   </dialog>
+  <dialog id="move-dialog" aria-labelledby="move-title">
+    <button class="close-dialog" data-close="move-dialog" aria-label="关闭移动笔记">×</button><h2 id="move-title">移动笔记</h2>
+    <p id="move-note-name" class="organization-note"></p><p id="move-origin"></p>
+    <form id="move-form"><label for="move-directory">目标目录</label><select id="move-directory"></select>
+    <div id="move-new-fields" hidden><label for="move-new-path">新目录路径</label><input id="move-new-path" maxlength="160" placeholder="例如：数学 / 微积分 / 导数"><p>用 / 分隔层级，移动后会自动显示新目录。</p></div>
+    <p>先保存到当前浏览器，点击“保存到 GitHub”后同步到其他设备。</p><p id="move-error" class="dialog-error" role="alert"></p>
+    <div class="dialog-actions"><button type="button" class="secondary" data-close="move-dialog">取消</button><button type="submit" class="primary" id="confirm-move">移动</button></div></form>
+  </dialog>
+  <dialog id="rename-dialog" aria-labelledby="rename-title">
+    <button class="close-dialog" data-close="rename-dialog" aria-label="关闭重命名目录">×</button><h2 id="rename-title">重命名目录</h2>
+    <form id="rename-form"><label for="rename-directory">选择目录</label><select id="rename-directory"></select>
+    <label for="rename-name">新名称</label><input id="rename-name" maxlength="160" required placeholder="输入目录的新名称">
+    <p id="rename-preview" class="organization-path"></p><p id="rename-impact"></p>
+    <p>笔记正文不变；点击“保存到 GitHub”后同步目录名称。</p><p id="rename-error" class="dialog-error" role="alert"></p>
+    <div class="dialog-actions"><button type="button" class="secondary" data-close="rename-dialog">取消</button><button type="submit" class="primary" id="confirm-rename">重命名</button></div></form>
+  </dialog>
   <dialog id="conflict-dialog" aria-labelledby="conflict-title"><h2 id="conflict-title">发现两个不同的版本</h2>
     <p id="conflict-text"></p><p>你的草稿已保留。可以下载云端副本比较，也可以备份本地笔记后采用云端版本。</p>
     <div class="dialog-actions"><button class="secondary" id="download-cloud">下载云端副本</button><button class="secondary" data-close="conflict-dialog">保留草稿</button><button class="primary" id="use-cloud">备份并采用云端</button></div>
@@ -259,6 +276,31 @@ function sharedEvents() {
   document.querySelectorAll('[data-action=save]').forEach(b => b.onclick = () => saveCloud());
   document.querySelectorAll('[data-action=export]').forEach(b => b.onclick = exportNote);
   document.querySelectorAll('[data-action=delete]').forEach(b => b.onclick = openDelete);
+  document.querySelectorAll('[data-action=move]').forEach(b => b.onclick = openMove);
+  document.querySelectorAll('[data-action=rename-directory]').forEach(b => b.onclick = () => openRename());
+  $('#move-directory').onchange = () => { $('#move-new-fields').hidden = $('#move-directory').value !== ''; $('#move-error').textContent = ''; if (!$('#move-new-fields').hidden) $('#move-new-path').focus(); };
+  $('#move-form').onsubmit = event => {
+    event.preventDefault(); if (busy || editorMounting || !current()) return;
+    try {
+      captureRich();
+      const result = moveNote(state.document, currentId, $('#move-directory').value === '' ? $('#move-new-path').value : $('#move-directory').value);
+      commitOrganization(result); expandDirectory(result.path); $('#move-dialog').close(); refreshOrganization();
+      toast(result.changed ? '笔记已移动。点击“保存到 GitHub”同步。' : '笔记已在这个目录中。');
+    } catch (error) { $('#move-error').textContent = error.message; }
+  };
+  $('#rename-directory').onchange = () => { $('#rename-name').value = directoryParts($('#rename-directory').value).at(-1); updateRenamePreview(); $('#rename-error').textContent = ''; };
+  $('#rename-name').oninput = updateRenamePreview;
+  $('#rename-form').onsubmit = event => {
+    event.preventDefault(); if (busy || editorMounting) return;
+    try {
+      captureRich(); const source = $('#rename-directory').value;
+      const result = renameDirectory(state.document, source, $('#rename-name').value);
+      commitOrganization(result);
+      for (const path of [...expandedCategories]) if (inDirectory(path, source)) { expandedCategories.delete(path); expandedCategories.add(result.path + path.slice(source.length)); }
+      expandDirectory(result.path); $('#rename-dialog').close(); refreshOrganization();
+      toast(result.changed ? `目录已重命名，涉及 ${result.changed} 篇笔记。点击“保存到 GitHub”同步。` : '目录名称没有变化。');
+    } catch (error) { $('#rename-error').textContent = error.message; }
+  };
   $('#confirm-delete').onclick = deleteNote;
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); saveCloud(); }
@@ -268,31 +310,86 @@ function sharedEvents() {
   channel?.addEventListener('message', () => { toast('另一个页面更新了笔记。请先导出本页草稿，再刷新查看，避免覆盖。'); setStatus('其他页面已有更新', true); document.querySelectorAll('[data-action=save]').forEach(b => b.disabled = true); });
 }
 function tree(query = '') {
-  const results = searchNotes(state.document.notes, query), groups = new Map();
-  for (const n of results) { const group = n.category.split('/')[0].trim() || '未分类'; if (!groups.has(group)) groups.set(group, []); groups.get(group).push(n); }
+  const results = searchNotes(state.document.notes, query), roots = new Map();
+  for (const note of results) {
+    const parts = directoryParts(directoryKey(note.category));
+    let children = roots, node;
+    parts.forEach((name, index) => {
+      if (!children.has(name)) children.set(name, { name, path: parts.slice(0, index + 1).join(' / '), children: new Map(), notes: [], count: 0 });
+      node = children.get(name); node.count++; children = node.children;
+    });
+    node.notes.push(note);
+  }
   const host = $('#tree'); host.replaceChildren();
   if (!results.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = '没有找到相关笔记'; host.append(p); }
-  for (const [name, notes] of groups) {
+  function renderDirectory(node, parent) {
     const details = document.createElement('details');
-    details.open = Boolean(query.trim()) || expandedCategories.has(name);
+    details.open = Boolean(query.trim()) || expandedCategories.has(node.path);
     details.addEventListener('toggle', () => {
       if (query.trim() || !details.isConnected) return;
-      if (details.open) expandedCategories.add(name); else expandedCategories.delete(name);
+      if (details.open) expandedCategories.add(node.path); else expandedCategories.delete(node.path);
     });
-    const summary = document.createElement('summary'); summary.innerHTML = `${icon('folder')}<span></span><span class="count"></span>`;
-    summary.querySelector('span').textContent = name; summary.querySelector('.count').textContent = notes.length; details.append(summary);
-    let lastCategory = null;
-    notes.forEach(n => {
-      const category = n.category.split('/').slice(1).map(s => s.trim()).join(' / ');
-      if (category && category !== lastCategory) { const label = document.createElement('div'); label.className = 'subcategory'; label.textContent = category; details.append(label); lastCategory = category; }
-      const a = document.createElement('a'); a.href = readerURL(n.id); a.className = `note-link${n.id === currentId ? ' active' : ''}`;
-      if (n.id === currentId) a.setAttribute('aria-current', 'page');
-      a.innerHTML = `${icon('file')}<span class="note-label"></span>`; a.querySelector('span').textContent = n.title;
-      a.onclick = event => { if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button) return; event.preventDefault(); currentId = n.id; history.pushState(null, '', a.href); renderNote(); window.scrollTo({ top: 0, behavior: 'instant' }); $('.sidebar').classList.remove('open'); };
-      details.append(a);
-    }); host.append(details);
+    const summary = document.createElement('summary');
+    summary.title = node.path;
+    summary.innerHTML = `${icon('folder')}<span class="folder-name"></span><span class="count"></span>`;
+    summary.querySelector('.folder-name').textContent = node.name;
+    summary.querySelector('.count').textContent = node.count;
+    const rename = document.createElement('button'); rename.type = 'button'; rename.className = 'directory-rename';
+    rename.setAttribute('aria-label', `重命名目录：${node.path}`); rename.title = '重命名目录'; rename.dataset.action = 'rename-directory';
+    rename.innerHTML = icon('edit'); rename.disabled = busy;
+    rename.onclick = event => { event.preventDefault(); event.stopPropagation(); openRename(node.path); };
+    summary.append(rename); details.append(summary);
+    const contents = document.createElement('div'); contents.className = 'directory-children';
+    node.children.forEach(child => renderDirectory(child, contents));
+    node.notes.forEach(note => {
+      const a = document.createElement('a'); a.href = readerURL(note.id); a.className = `note-link${note.id === currentId ? ' active' : ''}`;
+      if (note.id === currentId) a.setAttribute('aria-current', 'page');
+      a.innerHTML = `${icon('file')}<span class="note-label"></span>`; a.querySelector('span').textContent = note.title;
+      a.onclick = event => { if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button) return; event.preventDefault(); currentId = note.id; history.pushState(null, '', a.href); renderNote(); window.scrollTo({ top: 0, behavior: 'instant' }); $('.sidebar').classList.remove('open'); };
+      contents.append(a);
+    });
+    details.append(contents); parent.append(details);
   }
+  roots.forEach(node => renderDirectory(node, host));
   $('#note-count').textContent = `${state.document.notes.length} 篇笔记`;
+}
+function expandDirectory(path) {
+  const parts = directoryParts(path);
+  parts.forEach((_, i) => expandedCategories.add(parts.slice(0, i + 1).join(' / ')));
+}
+function directoryOptions(select) {
+  select.replaceChildren(...listDirectories(state.document).map(path => { const option = document.createElement('option'); option.value = path; option.textContent = path; return option; }));
+}
+function openMove() {
+  if (busy || editorMounting || !current()) return;
+  captureRich(); const note = current();
+  $('#move-note-name').textContent = note.title; $('#move-origin').textContent = `当前目录：${directoryKey(note.category)}`;
+  directoryOptions($('#move-directory'));
+  const option = document.createElement('option'); option.value = ''; option.textContent = '＋ 新建目录…'; $('#move-directory').append(option);
+  $('#move-directory').value = directoryKey(note.category); $('#move-new-path').value = ''; $('#move-new-fields').hidden = true; $('#move-error').textContent = '';
+  $('#move-dialog').showModal(); $('#move-directory').focus();
+}
+function openRename(path = current()?.category) {
+  if (busy || editorMounting) return;
+  captureRich(); directoryOptions($('#rename-directory'));
+  if (!$('#rename-directory').options.length) return toast('还没有目录，请先新建一篇笔记。');
+  if (path && listDirectories(state.document).includes(directoryKey(path))) $('#rename-directory').value = directoryKey(path);
+  $('#rename-name').value = directoryParts($('#rename-directory').value).at(-1); $('#rename-error').textContent = ''; updateRenamePreview();
+  $('#rename-dialog').showModal(); $('#rename-name').focus(); $('#rename-name').select();
+}
+function updateRenamePreview() {
+  const source = $('#rename-directory').value, parent = directoryParts(source).slice(0, -1);
+  $('#rename-preview').textContent = `新路径：${[...parent, $('#rename-name').value.trim() || '…'].join(' / ')}`;
+  $('#rename-impact').textContent = `将更新此目录及所有子目录中的 ${state.document.notes.filter(note => inDirectory(note.category, source)).length} 篇笔记。`;
+}
+function commitOrganization(result) {
+  if (!result.changed) return;
+  const previous = state.document; state.document = result.document;
+  if (!persist()) { state.document = previous; throw new Error('目录调整未能保存，原笔记仍保留。请先导出备份或处理其他页面的修改。'); }
+}
+function refreshOrganization() {
+  if (EDIT) { $('#edit-category').value = current().category; draftStatus(); }
+  else renderNote();
 }
 function openNew() {
   $('#new-note-title').value = '';
@@ -313,13 +410,13 @@ function renderReader() {
     <div class="library-heading"><span>我的知识库</span><span id="note-count"></span></div><nav class="tree" id="tree" aria-label="课程分类"></nav>
     <div class="sidebar-bottom sidebar-disclosure" id="sidebar-utilities">
       <button class="sidebar-tool-toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-panel" title="鼠标移入或点击展开笔记工具">${icon('menu')}<span>笔记工具</span><span class="tool-chevron" aria-hidden="true">⌃</span></button>
-      <div class="sidebar-popover" id="tools-panel" hidden><button id="import">${icon('download')}导入 Markdown / 备份</button><button id="backup">${icon('book')}导出全部笔记</button><button id="trash">${icon('trash')}回收站</button><button id="refresh">${icon('refresh')}拉取 GitHub 更新</button><p>记录、理解，再连接。<br>Yan's personal learning space</p></div>
+      <div class="sidebar-popover" id="tools-panel" hidden><button id="import">${icon('download')}导入 Markdown / 备份</button><button id="backup">${icon('book')}导出全部笔记</button><button id="trash">${icon('trash')}回收站</button><button id="refresh">${icon('refresh')}拉取 GitHub 更新</button><button data-action="rename-directory">${icon('edit')}重命名目录</button><p>记录、理解，再连接。<br>Yan's personal learning space</p></div>
     </div>
   </aside><main class="workspace"><header class="topbar"><button class="mobile-menu" aria-label="打开笔记目录">${icon('menu')}</button><div class="breadcrumb" id="breadcrumb"></div>
     <div class="top-actions"><span class="status" role="status"></span><button class="text-button" data-action="connect" title="连接 GitHub">${icon('github')}<span class="connection-label">连接 GitHub</span></button><button class="primary" data-action="save" hidden>${icon('cloud')}保存到 GitHub</button><a class="secondary" id="edit-link">${icon('edit')}编辑笔记</a></div></header>
     <div id="storage-alert" class="storage-alert" role="alert" hidden>浏览器未能保存草稿，请立即导出备份，避免关闭页面后丢失。</div>
     <div class="reading-layout"><article class="page"><div class="eyebrow" id="eyebrow"></div><h1 class="title" id="note-title"></h1><div class="meta"><span class="tag" id="note-tag"></span><span id="note-date"></span><span id="reading-time"></span></div>
-    <div class="read-hint">${icon('edit')}<span>这里是阅读模式 · 点击正文空白处，或右上角按钮进入编辑页</span>${fontButton()}</div>
+    <div class="read-hint">${icon('edit')}<span>这里是阅读模式 · 点击正文空白处，或右上角按钮进入编辑页</span><div class="read-tools"><button class="text-button" data-action="move">${icon('folder')}移动笔记</button>${fontButton()}</div></div>
     <details class="article-toc" id="article-toc" hidden></details><div class="prose" id="note-body"></div><footer class="page-footer"><span>${icon('leaf')}让知识慢慢生长</span><div class="note-footer-actions"><button class="text-button" data-action="export">${icon('download')}导出 Markdown</button><button class="text-button danger-text" data-action="delete">${icon('trash')}删除笔记</button></div></footer></article></div></main>${dialogs()}`;
   sidebarTools = setupSidebarTools($('.sidebar'));
   sharedEvents(); $('#new-note').onclick = openNew; $('#import').onclick = () => $('#import-file').click(); $('#backup').onclick = backup; $('#refresh').onclick = () => pullCloud(); $('#trash').onclick = openTrash;
@@ -337,7 +434,7 @@ function renderNote() {
   if (!current()) currentId = state.document.notes[0]?.id || null;
   const n = current();
   $('#edit-link').hidden = !n;
-  document.querySelectorAll('[data-action=export], [data-action=delete]').forEach(b => { b.hidden = !n; });
+  document.querySelectorAll('[data-action=export], [data-action=delete], [data-action=move]').forEach(b => { b.hidden = !n; });
   $('.meta').hidden = !n; $('.read-hint').hidden = !n;
   if (!n) {
     state.lastOpened = null; persist(); document.title = '我的学习笔记';
@@ -392,7 +489,7 @@ function renderEditor() {
   $('#app').innerHTML = `<header class="editor-topbar"><div class="editor-left"><a id="back-link" class="text-button">${icon('back')}返回阅读</a><span class="editor-divider"></span><span class="editor-badge">独立编辑空间</span></div>
     <div class="editor-actions"><span class="status" role="status"></span><button class="text-button danger-text" data-action="delete">${icon('trash')}删除笔记</button><button class="text-button" data-action="export">${icon('download')}导出 .md</button><button class="text-button" data-action="connect">${icon('github')}<span class="connection-label">连接 GitHub</span></button><button class="primary" data-action="save">${icon('cloud')}保存到 GitHub</button></div></header>
     <div id="storage-alert" class="storage-alert" role="alert" hidden>草稿未能写入浏览器，请先导出备份。</div>
-    <main class="editor-shell"><div class="editor-heading"><label class="visually-hidden" for="edit-category">课程 / 分类</label><input id="edit-category" class="editor-category" maxlength="160" placeholder="课程 / 分类"><label class="visually-hidden" for="edit-title">笔记标题</label><input id="edit-title" class="editor-title" maxlength="160" placeholder="未命名笔记"></div>
+    <main class="editor-shell"><div class="editor-heading"><div class="editor-category-row"><label class="visually-hidden" for="edit-category">课程 / 分类</label><input id="edit-category" class="editor-category" maxlength="160" placeholder="课程 / 分类"><button class="text-button" data-action="move">${icon('folder')}移动笔记</button><button class="text-button" data-action="rename-directory">${icon('edit')}重命名目录</button></div><label class="visually-hidden" for="edit-title">笔记标题</label><input id="edit-title" class="editor-title" maxlength="160" placeholder="未命名笔记"></div>
     <div class="editor-tabs"><div class="tab-list" role="tablist" aria-label="编辑模式"><button class="tab" role="tab" data-mode="rich" aria-selected="true">可视编辑</button><button class="tab" role="tab" data-mode="source" aria-selected="false">Markdown + 预览</button></div><div class="editor-display"><span class="editor-help">输入 / 插入内容，选中文字设置格式</span>${fontButton()}</div></div>
     <div class="editor-content"><div id="rich-editor"></div><div id="source-wrap" class="source-wrap" hidden><textarea id="source" aria-label="Markdown 源码" spellcheck="false"></textarea><div id="source-preview" class="prose source-preview" aria-label="实时预览"></div></div></div>
     <footer class="editor-bottom"><span>草稿自动保存于此浏览器</span><span id="editor-count"></span></footer></main>${dialogs()}`;
@@ -435,7 +532,7 @@ async function fetchCloud() {
 function showConflict(remote, conflicts) { conflictRemote = remote; $('#conflict-text').textContent = `以下笔记在本地与云端均有修改：${conflicts.join('、')}。本次没有覆盖云端。`; $('#conflict-dialog').showModal(); }
 function setBusy(value) {
   busy = value;
-  document.querySelectorAll('[data-action=save], [data-action=delete], #confirm-delete, #new-note, #import, #trash, #refresh, .tab, #edit-title, #edit-category, #source').forEach(el => { el.disabled = value; });
+  document.querySelectorAll('[data-action=save], [data-action=delete], [data-action=move], [data-action=rename-directory], #confirm-move, #confirm-rename, #move-directory, #move-new-path, #rename-directory, #rename-name, #confirm-delete, #new-note, #import, #trash, #refresh, .tab, #edit-title, #edit-category, #source').forEach(el => { el.disabled = value; });
   rich?.setReadonly(value);
 }
 async function saveCloud() {
