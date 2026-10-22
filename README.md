@@ -103,3 +103,18 @@ npm run build
 这是开发步骤，日常在线记笔记不需要运行。
 
 参考：[Milkdown](https://milkdown.dev/playground)、[GitHub Contents API](https://docs.github.com/en/rest/repos/contents)、[GitHub Pages 静态托管](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)、[KaTeX](https://katex.org/docs/security)。
+
+
+## 44 周科研学习计划
+
+首页右上角“学习计划”进入 `/study/`。原 Excel 的 44 周计划（504 小时）、18 项课程资源及 21 条验收用法已转成网页，无须安装插件。
+
+- 每周三项勾选：动手任务、算法练习、独立验收。完成三项并填写学习记录/证据后，再将状态设为“通过”。取消已通过周的任务或清空证据，会改为“待复测”。
+- 可记录实际小时、复测日期和最多 2 万字的每周学习记录。支持搜索、状态筛选及进度统计。
+- 草稿自动保存于当前浏览器。学习进度和普通笔记分别保存在 `study/progress.json` 与 `notes/notebook.json`，不会修改原有笔记。
+- 使用同一仓库的 Contents: Read and write 令牌保存到 GitHub。令牌仅保留于当前页面，不会跨页面传递或持久保存。
+- 换电脑点击“拉取 GitHub 更新”，也可导出/导入进度 JSON 备份。两个设备的不同字段可以合并，同一字段的不同修改需逐项选择，保存使用 GitHub 文件 SHA 防止覆盖新版本。
+- 网站公开，上传到 GitHub 的学习记录也会公开。未上传的记录仅在该浏览器中。首次访问使用发布的进度，已有草稿不会被可能滞后的 Pages 文件覆盖。
+- 计划内容在 `study/plan.json`，进度单独存储。原 Excel 不会被修改，网站上的勾选也不会回写 Excel。
+
+验证：`node --test scripts/notebook-core.test.mjs scripts/directory-operations.test.mjs scripts/study-progress.test.mjs`。
