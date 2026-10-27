@@ -1,3 +1,4 @@
+import { setupEditorLayout } from './editor-layout.mjs?v=20261027-editor1';
 import { EMPTY, validateDocument, sameDocument, mergeDocuments, toBase64, fromBase64, searchNotes } from './core.mjs';
 import { setupTableOfContents } from './toc.mjs';
 import { setupSidebarTools } from './sidebar-tools.mjs';
@@ -38,7 +39,7 @@ let storageSnapshot = null, persistedDocument = clone(EMPTY);
 let currentId = new URLSearchParams(location.search).get('note');
 let pendingSave = false, conflictRemote = null, toastTimer;
 let disposeToc = () => {};
-let sidebarTools;
+let sidebarTools, sourceLayout;
 const expandedCategories = new Set();
 let channel;
 try { channel = new BroadcastChannel(STORAGE); } catch { /* Cross-tab notices are optional. */ }
@@ -467,14 +468,14 @@ async function mountRich() {
   $('#rich-editor').innerHTML = '<p class="edit-loading">正在打开编辑器…</p>';
   editorMounting = (async () => {
     try {
-      const { mount } = await import('./editor/editor-entry.js');
+      const { mount } = await import('./editor/editor-entry.js?v=20261027-editor1');
       $('#rich-editor').replaceChildren(); rich = await mount($('#rich-editor'), current().body, updateBody); richBaseline = rich.getMarkdown();
-    } catch (e) { console.error(e); $('#rich-editor').replaceChildren(); toast('可视编辑器未能打开，已切换到 Markdown 编辑。'); mode = 'source'; $('#source-wrap').hidden = false; $('#rich-editor').hidden = true; setTabs(); }
+    } catch (e) { console.error(e); $('#rich-editor').replaceChildren(); toast('可视编辑器未能打开，已切换到 Markdown 编辑。'); mode = 'source'; renderBody($('#source-preview'), current().body); $('#source-wrap').hidden = false; $('#rich-editor').hidden = true; setTabs(); }
     finally { editorMounting = null; }
   })();
   return editorMounting;
 }
-function setTabs() { document.querySelectorAll('.tab').forEach(b => { b.setAttribute('aria-selected', String(b.dataset.mode === mode)); }); }
+function setTabs() { document.querySelectorAll('.tab').forEach(b => { b.setAttribute('aria-selected', String(b.dataset.mode === mode)); }); $('#source-controls').hidden = mode !== 'source'; sourceLayout?.refresh(); }
 async function switchMode(next) {
   if (busy || editorMounting || next === mode) return;
   captureRich();
@@ -485,14 +486,16 @@ async function switchMode(next) {
   } else { $('#source-wrap').hidden = true; $('#rich-editor').hidden = false; await mountRich(); }
 }
 function renderEditor() {
-  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = new URL('notes/editor/editor-entry.css', ROOT).href; document.head.prepend(css);
+  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = new URL('notes/editor/editor-entry.css?v=20261027-editor1', ROOT).href; document.head.prepend(css);
   $('#app').innerHTML = `<header class="editor-topbar"><div class="editor-left"><a id="back-link" class="text-button">${icon('back')}返回阅读</a><span class="editor-divider"></span><span class="editor-badge">独立编辑空间</span></div>
     <div class="editor-actions"><span class="status" role="status"></span><button class="text-button danger-text" data-action="delete">${icon('trash')}删除笔记</button><button class="text-button" data-action="export">${icon('download')}导出 .md</button><button class="text-button" data-action="connect">${icon('github')}<span class="connection-label">连接 GitHub</span></button><button class="primary" data-action="save">${icon('cloud')}保存到 GitHub</button></div></header>
     <div id="storage-alert" class="storage-alert" role="alert" hidden>草稿未能写入浏览器，请先导出备份。</div>
     <main class="editor-shell"><div class="editor-heading"><div class="editor-category-row"><label class="visually-hidden" for="edit-category">课程 / 分类</label><input id="edit-category" class="editor-category" maxlength="160" placeholder="课程 / 分类"><button class="text-button" data-action="move">${icon('folder')}移动笔记</button><button class="text-button" data-action="rename-directory">${icon('edit')}重命名目录</button></div><label class="visually-hidden" for="edit-title">笔记标题</label><input id="edit-title" class="editor-title" maxlength="160" placeholder="未命名笔记"></div>
-    <div class="editor-tabs"><div class="tab-list" role="tablist" aria-label="编辑模式"><button class="tab" role="tab" data-mode="rich" aria-selected="true">可视编辑</button><button class="tab" role="tab" data-mode="source" aria-selected="false">Markdown + 预览</button></div><div class="editor-display"><span class="editor-help">输入 / 插入内容，选中文字设置格式</span>${fontButton()}</div></div>
-    <div class="editor-content"><div id="rich-editor"></div><div id="source-wrap" class="source-wrap" hidden><textarea id="source" aria-label="Markdown 源码" spellcheck="false"></textarea><div id="source-preview" class="prose source-preview" aria-label="实时预览"></div></div></div>
+    <div class="editor-tabs"><div class="tab-list" role="tablist" aria-label="编辑模式"><button class="tab" role="tab" data-mode="rich" aria-selected="true">可视编辑</button><button class="tab" role="tab" data-mode="source" aria-selected="false">Markdown + 预览</button></div><div class="editor-display"><span class="editor-help">段落左侧 ≡ 调整格式，+ 插入内容</span>${fontButton()}</div></div>
+    <div id="source-controls" class="source-controls" hidden><label for="source-layout">布局</label><select id="source-layout" aria-label="Markdown 预览布局"><option value="auto">自动适应</option><option value="side">左右分栏</option><option value="stack">上下排列</option><option value="source">仅 Markdown</option><option value="preview">仅预览</option></select><button class="text-button" data-layout-wide aria-pressed="false">展开编辑区</button><span data-layout-hint>拖动分隔条调整比例</span></div>
+    <div class="editor-content"><div id="rich-editor"></div><div id="source-wrap" class="source-wrap" hidden><textarea id="source" aria-label="Markdown 源码" spellcheck="false"></textarea><div id="source-divider" class="source-divider" role="separator" tabindex="0" aria-label="调整编辑区与预览区比例" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" aria-controls="source source-preview" title="拖动调整比例；方向键微调；双击恢复各一半"></div><div id="source-preview" class="prose source-preview" aria-label="实时预览"></div></div></div>
     <footer class="editor-bottom"><span>草稿自动保存于此浏览器</span><span id="editor-count"></span></footer></main>${dialogs()}`;
+  sourceLayout = setupEditorLayout($('.editor-shell'), $('#source-wrap'), $('#source-controls'));
   sharedEvents(); $('#back-link').href = readerURL();
   $('#back-link').addEventListener('click', captureRich);
   window.addEventListener('pagehide', captureRich);

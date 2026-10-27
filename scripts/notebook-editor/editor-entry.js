@@ -1,4 +1,5 @@
 import { Crepe } from '@milkdown/crepe';
+import { blockFormatPlugin } from './block-format.js';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
 
@@ -19,9 +20,11 @@ export async function mount(root, markdown, onChange) {
     featureConfigs: {
       [Crepe.Feature.Latex]: { katexOptions: { trust: false, throwOnError: false, maxExpand: 1000 } },
       [Crepe.Feature.ImageBlock]: { onUpload: uploadImage, inlineOnUpload: uploadImage, blockOnUpload: uploadImage },
+      [Crepe.Feature.BlockEdit]: { blockHandle: { getOffset: () => 44 } },
       [Crepe.Feature.Placeholder]: { text: '写下你的理解，输入 / 插入内容…' },
     },
   });
+  editor.editor.use(blockFormatPlugin(root));
   let ready = false;
   editor.on(listener => listener.markdownUpdated((_ctx, value, previous) => {
     if (ready && value !== previous) onChange(value);

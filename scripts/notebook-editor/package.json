@@ -3,7 +3,8 @@
   "type": "module",
   "dependencies": {
     "@milkdown/crepe": "7.22.3",
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "@milkdown/kit": "7.22.3"
   },
   "scripts": {
     "build": "node build.mjs"
