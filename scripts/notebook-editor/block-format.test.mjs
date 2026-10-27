@@ -59,4 +59,42 @@ test('a list item that requires its first paragraph refuses code conversion with
   const before = view.state.doc;
   assert.equal(convertBlock(view, 2, 'code'), false);
   assert.equal(view.state.doc, before);
+  assert.equal(convertBlock(view, 2, 'formula'), false);
+  assert.equal(view.state.doc, before);
+});
+test('formula conversion preserves raw LaTeX, line breaks and the neighboring paragraph', () => {
+  const view = makeView([schema.nodes.paragraph.create(null, [schema.text('\\begin{aligned}x&=1'), schema.nodes.hardbreak.create(), schema.text('y&=2\\end{aligned}')]), p('untouched')]);
+  assert.equal(convertBlock(view, 0, 'formula'), true);
+  assert.equal(view.state.doc.firstChild.attrs.language, 'LaTeX');
+  assert.equal(view.state.doc.firstChild.textContent, '\\begin{aligned}x&=1\ny&=2\\end{aligned}');
+  assert.equal(view.state.doc.child(1).textContent, 'untouched');
+});
+test('an existing inline formula becomes a display formula without dollar delimiters', () => {
+  const view = makeView([schema.nodes.paragraph.create(null, schema.nodes.math_inline.create({ value: 'E=mc^2' }))]);
+  assert.equal(convertBlock(view, 0, 'formula'), true);
+  assert.equal(view.state.doc.firstChild.textContent, 'E=mc^2');
+  for (const source of ['$x^2$', '$$x^2$$', '\\[x^2\\]']) {
+    const wrapped = makeView([p(source)]);
+    assert.equal(convertBlock(wrapped, 0, 'formula'), true);
+    assert.equal(wrapped.state.doc.firstChild.textContent, 'x^2');
+  }
+});
+test('code and formula conversion can be reversed without changing the source', () => {
+  const source = '\\frac{x}{y} + z_1';
+  const view = makeView([schema.nodes.code_block.create({ language: 'python' }, schema.text(source))]);
+  assert.equal(convertBlock(view, 0, 'formula'), true);
+  assert.equal(view.state.doc.firstChild.attrs.language, 'LaTeX');
+  assert.equal(view.state.doc.firstChild.textContent, source);
+  assert.equal(convertBlock(view, 0, 'code'), true);
+  assert.equal(view.state.doc.firstChild.attrs.language, '');
+  assert.equal(view.state.doc.firstChild.textContent, source);
+});
+test('an empty paragraph opens an empty formula and readonly mode refuses conversion', () => {
+  const view = makeView([p('')]);
+  assert.equal(convertBlock(view, 0, 'formula'), true);
+  assert.equal(view.state.doc.firstChild.attrs.language, 'LaTeX');
+  assert.equal(view.state.doc.firstChild.content.size, 0);
+  const before = view.state.doc; view.editable = false;
+  assert.equal(convertBlock(view, 0, 'code'), false);
+  assert.equal(view.state.doc, before);
 });

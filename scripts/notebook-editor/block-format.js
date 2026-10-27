@@ -4,6 +4,17 @@ import { Plugin, TextSelection } from '@milkdown/kit/prose/state';
 import { setBlockType, wrapIn, lift } from '@milkdown/kit/prose/commands';
 import { wrapInList } from '@milkdown/kit/prose/schema-list';
 
+const isFormula = node => node?.type.name === 'code_block' && String(node.attrs.language).toLowerCase() === 'latex';
+
+function formulaText(node) {
+  // An inline formula already stores raw LaTeX. Other text stays intact.
+  let text = node.textBetween(0, node.content.size, '\n', leaf => leaf.attrs.value != null ? leaf.attrs.value : leaf.type.name === 'hardbreak' ? '\n' : leaf.attrs.src ? `![${leaf.attrs.alt || ''}](${leaf.attrs.src})` : '');
+  // Accept pasted math with delimiters without nesting a second pair of dollars.
+  const wrapped = text.trim().match(/^(?:\$\$([\s\S]*)\$\$|\$([^$\n]+)\$|\\\[([\s\S]*)\\\])$/);
+  if (wrapped) text = (wrapped[1] ?? wrapped[2] ?? wrapped[3]).trim();
+  return text;
+}
+
 // Select only the requested block. Commands retain text instead of inserting a new block.
 export function convertBlock(view, pos, format, serialize) {
   if (!view.editable) return false;
@@ -15,14 +26,19 @@ export function convertBlock(view, pos, format, serialize) {
   if (format === 'paragraph' && node.type === nodes.paragraph && view.state.selection.$from.depth > 1 && view.state.selection.$from.node(-1).type === nodes.blockquote) command = lift;
   else if (format === 'paragraph') command = setBlockType(nodes.paragraph);
   else if (/^h[1-6]$/.test(format)) command = setBlockType(nodes.heading, { level: Number(format[1]) });
-  else if (format === 'code') {
-    if (node.type === nodes.code_block) return true;
+  else if (format === 'code' || format === 'formula') {
+    const language = format === 'formula' ? 'LaTeX' : '';
+    if (node.type === nodes.code_block) {
+      if (format === 'formula' && isFormula(node) || format === 'code' && !isFormula(node)) return true;
+      view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, language }));
+      view.focus(); return true;
+    }
     const $pos = view.state.doc.resolve(pos);
     if (!$pos.parent.canReplaceWith($pos.index(), $pos.index() + 1, nodes.code_block)) return false;
     // Inline formulas/images are atoms. Converting them through setBlockType would discard them.
-    const text = serialize ? serialize(view.state.schema.topNodeType.create(null, nodes.paragraph.create(null, node.content))).trimEnd()
+    const text = format === 'formula' ? formulaText(node) : serialize ? serialize(view.state.schema.topNodeType.create(null, nodes.paragraph.create(null, node.content))).trimEnd()
       : node.textBetween(0, node.content.size, '\n', leaf => leaf.attrs.value != null ? `$${leaf.attrs.value}$` : leaf.type.name === 'hardbreak' ? '\n' : leaf.attrs.src ? `![${leaf.attrs.alt || ''}](${leaf.attrs.src})` : '');
-    view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, nodes.code_block.create({ language: '' }, text ? view.state.schema.text(text) : null)));
+    view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, nodes.code_block.create({ language }, text ? view.state.schema.text(text) : null)));
     view.focus(); return true;
   }
   else if (format === 'quote') command = wrapIn(nodes.blockquote);
@@ -38,7 +54,7 @@ export function convertBlock(view, pos, format, serialize) {
 
 const formats = [
   ['paragraph', '正文'], ['h1', '标题 1'], ['h2', '标题 2'], ['h3', '标题 3'],
-  ['h4', '标题 4'], ['h5', '标题 5'], ['h6', '标题 6'], ['code', '代码块'],
+  ['h4', '标题 4'], ['h5', '标题 5'], ['h6', '标题 6'], ['code', '代码块'], ['formula', '公式（LaTeX）'],
   ['quote', '引用'], ['bullet', '无序列表'], ['ordered', '有序列表'],
 ];
 
@@ -49,7 +65,18 @@ export function blockFormatPlugin(root) {
       overlay.className = 'block-format-handles';
       overlay.setAttribute('aria-label', '段落格式');
       root.append(overlay);
-      let frame = 0, menu = null, anchor = null, previousDoc = null;
+      let frame = 0, menu = null, anchor = null, previousDoc = null, pointer = null, hitAreas = [];
+      const updateHover = () => {
+        const area = pointer && view.editable ? hitAreas.find(area => pointer.x >= area.left && pointer.x <= area.right && pointer.y >= area.top && pointer.y <= area.bottom) : null;
+        for (const button of overlay.children) button.classList.toggle('is-hovered', button === area?.button);
+      };
+      const move = event => {
+        if (event.pointerType === 'touch') return;
+        const rect = root.getBoundingClientRect();
+        pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        updateHover();
+      };
+      const leave = () => { pointer = null; updateHover(); };
       const close = (restore = false) => {
         menu?.remove(); menu = null;
         anchor?.setAttribute('aria-expanded', 'false');
@@ -65,7 +92,7 @@ export function blockFormatPlugin(root) {
         menu.className = 'block-format-menu'; menu.setAttribute('role', 'menu');
         menu.setAttribute('aria-label', '调整当前段落');
         const node = view.state.doc.nodeAt(pos);
-        const selected = node?.type.name === 'heading' ? `h${node.attrs.level}` : node?.type.name === 'code_block' ? 'code' : 'paragraph';
+        const selected = node?.type.name === 'heading' ? `h${node.attrs.level}` : isFormula(node) ? 'formula' : node?.type.name === 'code_block' ? 'code' : 'paragraph';
         for (const [format, label] of formats) {
           const item = document.createElement('button'); item.type = 'button';
           item.setAttribute('role', 'menuitemradio'); item.setAttribute('aria-checked', String(format === selected));
@@ -102,7 +129,7 @@ export function blockFormatPlugin(root) {
       };
       const draw = () => {
         frame = 0;
-        if (menu && previousDoc !== view.state.doc) close();
+        if (menu && (previousDoc !== view.state.doc || !view.editable)) close();
         previousDoc = view.state.doc;
         // Reuse controls while the document stays unchanged, keeping keyboard focus stable.
         const blocks = [];
@@ -112,6 +139,7 @@ export function blockFormatPlugin(root) {
         const existing = new Map([...overlay.children].map(button => [Number(button.dataset.pos), button]));
         const rootBox = root.getBoundingClientRect();
         const active = view.state.selection.$from;
+        hitAreas = [];
         for (const { node, pos } of blocks) {
           const dom = view.nodeDOM(pos);
           if (!(dom instanceof Element)) continue;
@@ -126,21 +154,27 @@ export function blockFormatPlugin(root) {
             button.onclick = () => open(button, pos);
             overlay.append(button);
           }
-          const label = node.type.name === 'heading' ? `标题 ${node.attrs.level}` : node.type.name === 'code_block' ? '代码块' : '正文';
+          const label = node.type.name === 'heading' ? `标题 ${node.attrs.level}` : isFormula(node) ? '公式' : node.type.name === 'code_block' ? '代码块' : '正文';
           button.setAttribute('aria-label', `调整当前段落格式：${label}，${node.textContent.slice(0, 24) || '空段落'}`);
           button.title = `调整当前段落 · ${label}`;
-          button.style.left = `${Math.max(2, box.left - rootBox.left - 30)}px`;
-          button.style.top = `${box.top - rootBox.top + Math.max(0, (parseFloat(getComputedStyle(dom).lineHeight) || 28) / 2 - 12)}px`;
+          const left = Math.max(2, box.left - rootBox.left - 30);
+          const top = box.top - rootBox.top + Math.max(0, (parseFloat(getComputedStyle(dom).lineHeight) || 28) / 2 - 12);
+          button.style.left = `${left}px`;
+          button.style.top = `${top}px`;
+          hitAreas.push({ button, left: left - 4, right: box.right - rootBox.left, top: Math.min(top, box.top - rootBox.top) - 3, bottom: Math.max(top + 24, box.bottom - rootBox.top) + 3 });
           button.classList.toggle('is-current', active.pos > pos && active.pos <= pos + node.nodeSize - 1);
           button.disabled = !view.editable;
         }
         for (const button of existing.values()) button.remove();
+        updateHover();
       };
       const schedule = () => { if (!frame) frame = requestAnimationFrame(draw); };
       const outside = event => { if (menu && !menu.contains(event.target) && !anchor?.contains(event.target)) close(); };
       const scroll = event => { if (menu && !menu.contains(event.target)) close(); };
       const observer = new ResizeObserver(schedule); observer.observe(root);
       root.addEventListener('load', schedule, true);
+      root.addEventListener('pointermove', move);
+      root.addEventListener('pointerleave', leave);
       window.addEventListener('resize', schedule);
       window.addEventListener('scroll', scroll, true);
       document.addEventListener('pointerdown', outside);
@@ -150,6 +184,7 @@ export function blockFormatPlugin(root) {
         destroy() {
           close(); cancelAnimationFrame(frame); observer.disconnect(); overlay.remove();
           root.removeEventListener('load', schedule, true);
+          root.removeEventListener('pointermove', move); root.removeEventListener('pointerleave', leave);
           window.removeEventListener('resize', schedule); window.removeEventListener('scroll', scroll, true);
           document.removeEventListener('pointerdown', outside);
         },
