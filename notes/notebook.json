@@ -2,6 +2,27 @@
   "version": 1,
   "notes": [
     {
+      "id": "0b1e5143-f247-4af3-a52a-e00c55d1c242",
+      "title": "数组",
+      "category": "代码-算法学习 / Python",
+      "body": "数组：连续的空间，存储一组相同类型的元素\n\n特点：适合读，不适合写\n\n## 创建数组\n\n```Python\na = []\n```\n\n## 添加元素\n\n```Python\na.append() #O(1)\na.insert(2,99) #(索引，数据) O(N)\n```\n\n## 访问元素\n\n```Python\ntemp = a[2] #O(1)\n```\n\n## 修改元素\n\n```Python\na[2] = 88 #O(1)\n```\n\n## 删除元素\n\n```Python\na.pop(1) #（索引）O(N)\na.pop() #O(1)\na.remove(88) #（数据）O(N)\n```\n\n## 遍历数组\n\n```Python\nfor i in a:\n  print(i)\n\nfor index, elemenet in enumerate(a):\n  print(\"index in\" , index, \"is\", element)\n\nfor i in range(0, len(a)):\n  print(\"index in\" , i, \"is\", a[1])\n```\n\n## 查找元素\n\n```Python\nindex = a.index(2) #（数据）O(N)\n```\n\n## 数组的长度\n\n```Python\nlen(a)\n```\n\n## 数组排序\n\n```Python\na.sort()\na.sort(reverse=True) #O(logN)\n```\n",
+      "updatedAt": "2026-11-14T14:24:13.822Z"
+    },
+    {
+      "id": "50f57b11-9b78-468b-95f0-6fe585f6bfa9",
+      "title": "时间空间复杂度",
+      "category": "代码-算法学习 / Python",
+      "body": "# 常见时间复杂度\n\nO(1) < O(logN) （二分查找法）< O(N) < O(NlogN) （排序）< O(N^2) < O(2^N) < O(N!)\n\n看循环\n\n### O(1)：\n\n```Python\ndef o1(num):\n  i = num\n  j = num * 2\n  return i+j\n```\n\n### O(N):\n\n```Python\ndef on(num):\n  total = 0\n  for i in num:\n    total += i\n  return total\n```\n\n### O(logN) :\n\n```Python\ndef ologn(num):\n  i = 1\n  while (i < num):\n    i = i*2\n  return i #log_2^n\n```\n\n### O(M+N):\n\n```Python\ndef omn(num1,num2):\n  total = 0\n  for i in num1:\n    total += i\n  for j in num2:\n    total += j\n  return total\n```\n\n### O(MlogN):\n\n```Python\ndef omlogn(num1,num2):\n  total = 0\n  for i in num1:\n    j = 1\n    while (j < num2):\n      total += i*j\n      j = j*2\n  return total\n```\n\n### O(N^2):\n\n```Python\ndef on2(num):\n  total = 0\n  for i in num:\n    for j in num:\n      total += i*j\n  return total\n```\n\n# 空间复杂度：\n\nO(1) （少）, O(N) （多） - 常见\n\nO(N^2)\n\nO(logN), O(NlogN)  - 基本用不上\n\n### 方法：\n\n* 找变量 ：常量O(1)；数组、队列、列表等O(N)\n* 递归：递归stack O(N)\n\n<br />\n",
+      "updatedAt": "2026-11-14T14:07:42.507Z"
+    },
+    {
+      "id": "d83c8a67-232e-4c39-8835-54d2796a48c8",
+      "title": "总体架构",
+      "category": "代码-算法学习 / Python",
+      "body": "时间复杂度 - 执行时间与输入值之间的关系（计算效率）\n\n空间复杂度 - 储存空间与输入值之间的关系\n\n# 数据结构\n\n* 数组 array\n* 链表 linkedlist\n* 队列 queue\n* 栈 stack\n* 哈希表 hashtable\n* 树 tree\n* 堆 heap\n* 图 graph\n\n# 算法\n\n* 双指针 two pointers\n* 二分查找法 binary search\n* 滑动窗口 sliding window\n* 递归 recursion\n* 分治法 divide & conquer\n* 回溯法 backtracking\n* 深度优先搜索 DFS\n* 宽度优先搜索 BFS\n* 并查集 union find\n* 并查集优化 union find optimization\n* 贪心算法 greedy\n* 记忆化搜索 memorization\n* 动态规划 dynamic programming\n* 前缀树 trie\n",
+      "updatedAt": "2026-11-14T13:33:18.196Z"
+    },
+    {
       "id": "853f671a-dcf3-4c3c-9d20-35c6b3f5a464",
       "title": "采集数据-20261112",
       "category": "活动侧翼/实验",
@@ -25,9 +46,9 @@
     {
       "id": "bc4ffd78-3ed2-4dba-b99b-787fbeedee9e",
       "title": "数据处理",
-      "category": "代码学习 / Pytorch",
-      "body": "## 数据操作\n\n```Python\nimport torch  \n\n# 创建一个行向量 x，包含从0开始的12个整数\nx  = torch.arange(12) # x = tensor([0,1,2,3,4,5,6,7,8,9,10,11])\n\n# 访问张量的形状\nx.shape # torch.Size([12])\n\n# 张量中元素的数量\nx.numel # 12\n\n# 改变一个张量的形状而不改变元素数量和元素值，可以调用reshape函数\nX = x.reshape(3,4) # tensor([0,1,2,3],[4,5,6,7],[8,9,10,11])\n  # 也可以通过-1来自动计算维度，x.reshape(-1,4) or x.reshape(3,-1)\n\n# 全0，全1，随机 张量\ntensor.zeros((2,3,4))   tensor.ones((2,3,4))  tensor.randn(2,3,4)\n\n# 每个元素赋值\ntorch.tensor([[2,1,4,3],[1,2,3,4],[4,3,2,1]])\n\n# 按元素运算\nx = torch.tensor([1.0,4,6,8])\ny = torch.tensor([2,2,2,2])\nx+y, x-y, x*y, x/y, x**y \n  # tensor([ 3., 6., 8., 10.]), tensor([ -1., 2., 4., 6.])\n  # tensor([ 2., 8., 12., 16.]) tensor([ 0.5, 2., 3., 4.]) tensor([ 1., 16., 36., 64.])\n\n# 张量连结\nX = torch.arange(12, dtype = torch.float32).reshape(3.4)\nY = torch.tensor([[2.0,1,4,3],[1,2,3,4],[4,3,2,1]])\ntorch.cat((X,Y),dim=0)  torch.cat((X,Y),dim=1) \n # tensor([[ 0.,  1.,  2.,  3.],\n #         [ 4.,  5.,  6.,  7.],\n #         [ 8.,  9., 10., 11.],\n #         [ 2.,  1.,  4.,  3.],\n #         [ 1.,  2.,  3.,  4.],\n #         [ 4.,  3.,  2.,  1.]]),\n # tensor([[ 0.,  1.,  2.,  3.,  2.,  1.,  4.,  3.],\n #         [ 4.,  5.,  6.,  7.,  1.,  2.,  3.,  4.],\n #         [ 8.,  9., 10., 11.,  4.,  3.,  2.,  1.]]))\n\n# 构建二元张量\nX ==Y   X < Y   X > Y\n  # tensor([[False,  True, False,  True],\n  #         [False, False, False, False],\n  #         [False, False, False, False]])\n\n# 广播机制 复制或者扩展一个张量，使其与另一个张量维度相同，可以按元素操作\na = torch.arrange(3).reshape((3,1))\nb = torch.arrange(2).reshape((1,2))\na, b, a+b\n  # tensor([[0],[1],[2]]), tensor([[0,1]])\n  # tensor([[0,1],[1,2],[2,3]])\n\n# 索引和切片\nX[-1], X[1:3], X[1,2]=9, X[0:2,:]=12\n  # tensor([8.,  9., 10., 11.])\n  # tensor([[ 0.,  1.,  2.,  3.],\n  #         [ 4.,  5.,  6.,  7.]])\n  # tensor([[ 0.,  1.,  2.,  3.],\n  #         [ 4.,  5.,  9.,  7.],\n  #         [ 8.,  9., 10., 11.]])\n  # tensor([[ 12.,  12.,  12.,  12.],\n  #         [ 12.,  12.,  12.,  12.],\n  #         [ 8.,  9., 10., 11.]])\n\n# 节省内存\nbefore = id(Y)\nY = Y + X\nid(Y) == before #False\n\nZ = torch.zeros_like(Y)\nprint('id(Z):', id(Z))\nZ[:] = X + Y\nprint('id(Z):', id(Z)) # id(Z): 140327634811696  id(Z): 140327634811696\n  # 创建一个新的与Y维度相同的张量，然后更新这一个\n  # 也可以使用X[:] = X + Y或X += Y\n\n# 转换为其它的python对象\nA = X.numpy()\nB = torch.tensor(A)\ntype(A), type(B) # (numpy.ndarray, torch.Tensor)\n```\n\n<br />\n\n## 数据预处理\n",
-      "updatedAt": "2026-11-13T06:41:44.041Z"
+      "category": "代码-算法学习 / Pytorch",
+      "body": "## 数据操作\n\n```Python\nimport torch  \n\n# 创建一个行向量 x，包含从0开始的12个整数\nx  = torch.arange(12) # x = tensor([0,1,2,3,4,5,6,7,8,9,10,11])\n\n# 访问张量的形状\nx.shape # torch.Size([12])\n\n# 张量中元素的数量\nx.numel # 12\n\n# 改变一个张量的形状而不改变元素数量和元素值，可以调用reshape函数\nX = x.reshape(3,4) # tensor([0,1,2,3],[4,5,6,7],[8,9,10,11])\n  # 也可以通过-1来自动计算维度，x.reshape(-1,4) or x.reshape(3,-1)\n\n# 全0，全1，随机 张量\ntensor.zeros((2,3,4))   tensor.ones((2,3,4))  tensor.randn(2,3,4)\n\n# 每个元素赋值\ntorch.tensor([[2,1,4,3],[1,2,3,4],[4,3,2,1]])\n\n# 按元素运算\nx = torch.tensor([1.0,4,6,8])\ny = torch.tensor([2,2,2,2])\nx+y, x-y, x*y, x/y, x**y \n  # tensor([ 3., 6., 8., 10.]), tensor([ -1., 2., 4., 6.])\n  # tensor([ 2., 8., 12., 16.]) tensor([ 0.5, 2., 3., 4.]) tensor([ 1., 16., 36., 64.])\n\n# 张量连结\nX = torch.arange(12, dtype = torch.float32).reshape(3.4)\nY = torch.tensor([[2.0,1,4,3],[1,2,3,4],[4,3,2,1]])\ntorch.cat((X,Y),dim=0)  torch.cat((X,Y),dim=1) \n # tensor([[ 0.,  1.,  2.,  3.],\n #         [ 4.,  5.,  6.,  7.],\n #         [ 8.,  9., 10., 11.],\n #         [ 2.,  1.,  4.,  3.],\n #         [ 1.,  2.,  3.,  4.],\n #         [ 4.,  3.,  2.,  1.]]),\n # tensor([[ 0.,  1.,  2.,  3.,  2.,  1.,  4.,  3.],\n #         [ 4.,  5.,  6.,  7.,  1.,  2.,  3.,  4.],\n #         [ 8.,  9., 10., 11.,  4.,  3.,  2.,  1.]]))\n\n# 构建二元张量\nX ==Y   X < Y   X > Y\n  # tensor([[False,  True, False,  True],\n  #         [False, False, False, False],\n  #         [False, False, False, False]])\n\n# 广播机制 复制或者扩展一个张量，使其与另一个张量维度相同，可以按元素操作\na = torch.arrange(3).reshape((3,1))\nb = torch.arrange(2).reshape((1,2))\na, b, a+b\n  # tensor([[0],[1],[2]]), tensor([[0,1]])\n  # tensor([[0,1],[1,2],[2,3]])\n\n# 索引和切片\nX[-1], X[1:3], X[1,2]=9, X[0:2,:]=12\n  # tensor([8.,  9., 10., 11.])\n  # tensor([[ 0.,  1.,  2.,  3.],\n  #         [ 4.,  5.,  6.,  7.]])\n  # tensor([[ 0.,  1.,  2.,  3.],\n  #         [ 4.,  5.,  9.,  7.],\n  #         [ 8.,  9., 10., 11.]])\n  # tensor([[ 12.,  12.,  12.,  12.],\n  #         [ 12.,  12.,  12.,  12.],\n  #         [ 8.,  9., 10., 11.]])\n\n# 节省内存\nbefore = id(Y)\nY = Y + X\nid(Y) == before #False\n\nZ = torch.zeros_like(Y)\nprint('id(Z):', id(Z))\nZ[:] = X + Y\nprint('id(Z):', id(Z)) # id(Z): 140327634811696  id(Z): 140327634811696\n  # 创建一个新的与Y维度相同的张量，然后更新这一个\n  # 也可以使用X[:] = X + Y或X += Y\n\n# 转换为其它的python对象\nA = X.numpy()\nB = torch.tensor(A)\ntype(A), type(B) # (numpy.ndarray, torch.Tensor)\n```\n\n## 数据预处理\n\n```Python\nimport panda as pd\n\ndata = pd.read_csv(data_file)\n# 位置索引，iloc\ninput, output = data.iloc[:,0:2], data.ilco[:,2]\n# 将没有数据的位置用平均值代替\ninput = input.fillna(input.mean())\n```\n\n## 张量计算\n\n```Python\nimport torch\n\na = torch.arange(24).reshape((2,3,4))\n\nb = a.clone\n\n#逐元素计算\na*b\na+2 , a*2\na.sum(), a.sum(axis=1), a.sum(axis=[1,2])\na.mean(), a.mean(axis=1), a.mean(axis=[1,2])\n\n#张量点乘\ntorch.mv(a,x) #x是常量\ntorch.mm(a,b)\ntorch.norm(u) #L2范数\ntoech.abs(u).sum() #L1范数\n```\n",
+      "updatedAt": "2026-11-14T13:10:50.249Z"
     },
     {
       "id": "px4-ros2-install",
@@ -95,9 +116,9 @@
     {
       "id": "python-debugging",
       "title": "Python trick",
-      "category": "代码学习 / Python",
+      "category": "代码-算法学习 / Python",
       "body": "1.breakpoint()  \n    - 在Python 3.7及以上版本中，可以使用`breakpoint()`函数来设置断点，类似于`pdb.set_trace()`。它会自动调用`pdb`模块，方便调试。\n    进入调试模式后可使用这些命令：\n\n    h(elp)：查看帮助\n    n(ext)：执行下一行（不进入函数）\n    s(tep)：执行下一行（进入函数）\n    c(ontinue)：继续运行直到下一个断点\n    l(ist)：显示当前代码上下文\n    p <变量>：打印变量值\n    pp <表达式>：美化打印表达式\n    q(uit)：退出调试\n    b(reak) [行号]：设置新断点\n    w(here)：显示调用栈",
-      "updatedAt": "2026-11-13T06:41:44.041Z"
+      "updatedAt": "2026-11-14T12:53:14.946Z"
     }
   ]
 }
